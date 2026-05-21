@@ -1,11 +1,6 @@
 - [x] Read and understand existing amazon_to_sheets.py
-- [ ] Implement dynamic header lookup (exact 'ASIN' and 'Price') and fail fast if missing
-- [ ] Replace ScraperAPI HTML proxy call with ScraperAPI structured JSON endpoint for Amazon India
-- [ ] Implement exact 5-level state machine for INVALID ASIN / Unavailable / Suppressed / Price / Parsing Error
-- [ ] Ensure strict row-to-row mapping from ASIN column to corresponding Price column
-- [ ] Batch update the Price column once at the end (no per-row updates)
-- [ ] Add request pacing (time.sleep) and robust JSON parsing
-- [ ] Provide complete ready-to-run amazon_to_sheets.py
-- [ ] Optional: quick local lint/run sanity check
-
+- [x] Created git repo for EFPrgs (so changes can be reverted)
+- [x] Baseline committed (so we can reset later)
+- [ ] (Revert) Restore original amazon_to_sheets.py from baseline commit (if original differs)
+- [ ] Push/attach repo to GitHub: https://github.com/SidTheSloth12/amazonpricescraper
 
