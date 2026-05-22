@@ -3,6 +3,14 @@ import re
 import sys
 
 try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv:
+    load_dotenv()
+
+try:
     import requests
 except ImportError:
     requests = None
@@ -14,10 +22,11 @@ except ImportError:
     gspread = None
     ServiceAccountCredentials = None
 
-SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "9ceeb34b24d683345d6f4e8f1abb191b")
+SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
 SCRAPERAPI_URL = "http://api.scraperapi.com"
-GOOGLE_SHEET_NAME = "AZ ASINs"
-SHEET_TAB_NAME = "Sheet1"
+GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
+GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "AZ ASINs")
+SHEET_TAB_NAME = os.getenv("SHEET_TAB_NAME", "Sheet1")
 STATUS_UNAVAILABLE = "NA"
 STATUS_SUPPRESSED = "S"
 
@@ -54,6 +63,8 @@ def normalize_price(text):
 def fetch_amazon_html(asin):
     if requests is None:
         raise RuntimeError("Missing dependency: install requests")
+    if not SCRAPERAPI_KEY:
+        raise RuntimeError("Missing SCRAPERAPI_KEY environment variable")
 
     params = {
         "api_key": SCRAPERAPI_KEY,
@@ -133,7 +144,7 @@ def open_google_sheet():
         raise RuntimeError("Missing gspread/oauth2client dependency")
 
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_PATH, scope)
     client = gspread.authorize(creds)
     return client.open(GOOGLE_SHEET_NAME).worksheet(SHEET_TAB_NAME)
 

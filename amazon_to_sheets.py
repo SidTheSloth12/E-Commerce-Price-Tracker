@@ -9,6 +9,14 @@ import concurrent.futures
 from html import unescape
 
 try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv:
+    load_dotenv()
+
+try:
     import requests
 except ImportError:
     requests = None
@@ -28,9 +36,10 @@ except ImportError:  # HTML fallback still has a regex parser if bs4 is unavaila
 # Reconfigure stdout to use UTF-8 to prevent Windows console UnicodeEncodeError
 sys.stdout.reconfigure(encoding='utf-8')
 
-SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "9ceeb34b24d683345d6f4e8f1abb191b")
-GOOGLE_SHEET_NAME = "Copy of AZ ASINs"
-SHEET_TAB_NAME = "Sheet1"
+SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
+GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
+GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "AZ ASINs")
+SHEET_TAB_NAME = os.getenv("SHEET_TAB_NAME", "Sheet1")
 CACHE_FILE = "asin_cache.json"
 _cache = {}
 _cache_lock = threading.Lock()
@@ -589,6 +598,8 @@ def fetch_amazon_price_via_proxy(task_data):
         return row_idx, ""
     if requests is None:
         return row_idx, "Error: missing requests dependency"
+    if not SCRAPERAPI_KEY:
+        return row_idx, "Error: missing SCRAPERAPI_KEY environment variable"
     asin = normalize_asin(asin)
     if asin in ASIN_RESULT_OVERRIDES:
         return row_idx, ASIN_RESULT_OVERRIDES[asin]
@@ -763,7 +774,7 @@ def main():
         return
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_PATH, scope)
         client = gspread.authorize(creds)
         sheet = client.open(GOOGLE_SHEET_NAME).worksheet(SHEET_TAB_NAME)
     except Exception as e:

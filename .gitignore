@@ -1,0 +1,15 @@
+credentials.json
+.env
+asin_cache.json
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.swp
+*.swo
+*~
