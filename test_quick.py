@@ -15,7 +15,7 @@ ok = True
 for asin, exp in TESTS:
     results = [fetch_amazon_price_via_proxy((0, asin))[1] for _ in range(3)]
     if exp == "price":
-        match = all(r and r[0] in "₹$" and r not in ("S", "NA") for r in results)
+        match = all(r and r[0] in "\u20b9$" and r != "NA" for r in results)
     elif exp == "679":
         match = all(r and "679" in r.replace(",", "") for r in results)
     else:
