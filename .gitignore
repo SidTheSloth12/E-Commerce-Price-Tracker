@@ -13,3 +13,7 @@ venv/
 *.swp
 *.swo
 *~
+*.orig
+tmp_*.py
+extensions.txt
+AZ ASINs - Sheet1.csv
