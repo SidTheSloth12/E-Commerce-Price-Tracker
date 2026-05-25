@@ -64,6 +64,16 @@ check(
 )
 
 check(
+    "structured 200 auth error is reported",
+    classify_structured_product(
+        200,
+        {"error": "Invalid API key"},
+        requested_asin="B0TEST1234",
+    ),
+    ("Proxy Error: Auth/Credits Expired", True),
+)
+
+check(
     "html price requires buy button",
     classify_html_product(
         """

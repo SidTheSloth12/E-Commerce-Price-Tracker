@@ -38,7 +38,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
 GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
-GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "AZ ASINs")
+GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "Copy of AZ ASINs")
 SHEET_TAB_NAME = os.getenv("SHEET_TAB_NAME", "Sheet1")
 CACHE_FILE = "asin_cache.json"
 _cache = {}
@@ -53,6 +53,7 @@ REQUEST_HEADERS = {
 STATUS_UNAVAILABLE = "NA"
 STATUS_SUPPRESSED = "S"
 STATUS_NOT_FOUND = "Price Not Found"
+PROXY_AUTH_ERROR = "Proxy Error: Auth/Credits Expired"
 LOGIC_VERSION = 3
 MAX_CONCURRENT_REQUESTS = 5
 CACHE_TTL = 300  # Reuse recent results for repeated debugging runs and reduce proxy usage.
@@ -384,12 +385,51 @@ def _payload_asin(payload):
     return ""
 
 
+def _extract_scraperapi_error(payload):
+    if not isinstance(payload, dict):
+        return ""
+    candidates = []
+    for key in ("error", "errors", "message", "detail", "details", "reason"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            candidates.append(value)
+        elif isinstance(value, list):
+            candidates.extend(str(item) for item in value if item)
+        elif isinstance(value, dict):
+            candidates.extend(str(item) for item in value.values() if item)
+        elif value not in (None, False):
+            candidates.append(str(value))
+    message = " ".join(candidates).strip()
+    if not message:
+        return ""
+    lower = message.lower()
+    auth_markers = (
+        "api key",
+        "apikey",
+        "authentication",
+        "auth",
+        "unauthorized",
+        "invalid key",
+        "expired",
+        "credit",
+        "credits",
+        "billing",
+    )
+    if any(marker in lower for marker in auth_markers):
+        return PROXY_AUTH_ERROR
+    return f"Proxy Error: {message[:120]}"
+
+
 def classify_structured_product(http_status, payload, requested_asin=None):
     """Return (value, definitive). Definitive values should not need HTML fallback."""
     if http_status == 404:
         return STATUS_UNAVAILABLE, True
     if not isinstance(payload, dict):
         return STATUS_NOT_FOUND, False
+
+    proxy_error = _extract_scraperapi_error(payload)
+    if proxy_error:
+        return proxy_error, True
 
     payload_asin = _payload_asin(payload)
     if requested_asin and payload_asin and payload_asin != normalize_asin(requested_asin):
@@ -653,7 +693,7 @@ def fetch_amazon_price_via_proxy(task_data):
                 time.sleep(min(1.0, 0.1 * (2 ** (attempt - 1))) + random.random() * 0.2)
             response = requests.get(proxy_url, params=params, headers=REQUEST_HEADERS, timeout=70)
             if response.status_code == 403:
-                return remember("Proxy Error: Auth/Credits Expired")
+                return remember(PROXY_AUTH_ERROR)
             elif response.status_code == 404:
                 return remember(STATUS_UNAVAILABLE)
             elif response.status_code == 429:
@@ -725,7 +765,7 @@ def fetch_amazon_price_via_proxy(task_data):
                 )
                 continue
             if response.status_code == 403:
-                return remember("Proxy Error: Auth/Credits Expired")
+                return remember(PROXY_AUTH_ERROR)
             if response.status_code == 404:
                 return remember(STATUS_UNAVAILABLE)
             if response.status_code != 200:
@@ -778,7 +818,20 @@ def main():
         client = gspread.authorize(creds)
         sheet = client.open(GOOGLE_SHEET_NAME).worksheet(SHEET_TAB_NAME)
     except Exception as e:
-        print(f"Authentication Error: {e}")
+        response = getattr(e, "response", None)
+        status_code = getattr(response, "status_code", None)
+        exc_name = type(e).__name__
+        if exc_name == "SpreadsheetNotFound":
+            print(
+                "Google Sheets Error: spreadsheet not found or not shared with the service account. "
+                f"Check GOOGLE_SHEET_NAME={GOOGLE_SHEET_NAME!r} and share it with the client_email in {GOOGLE_CREDENTIALS_PATH}."
+            )
+        elif exc_name == "WorksheetNotFound":
+            print(f"Google Sheets Error: worksheet/tab {SHEET_TAB_NAME!r} was not found in {GOOGLE_SHEET_NAME!r}.")
+        elif status_code:
+            print(f"Google Sheets API Error ({status_code}): {e}")
+        else:
+            print(f"Google Sheets Authentication Error: {e}")
         return
     all_rows = sheet.get_all_values()
     if not all_rows:
