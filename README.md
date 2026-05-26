@@ -92,7 +92,7 @@ RENDERED_HTML_SESSIONS = (1005,)  # Render sessions (full version only)
 
 ## Accuracy
 
-- **Simple version**: 97.6% accuracy on test dataset (171 products)
+- **Simple version**: 98.8% accuracy on test dataset (169 products)
 - **Full version**: Similar with enhanced fallback verification
 
 ## Credit Usage
