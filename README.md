@@ -1,6 +1,6 @@
 # Amazon to Google Sheets Price Scraper
 
-A Python tool that fetches Amazon product prices via ScraperAPI and updates a Google Sheet. Features conservative classification with 97.6% accuracy while minimizing API credit usage.
+A Python tool that fetches Amazon product prices via ScraperAPI and updates a Google Sheet. Features conservative classification with 98.8% accuracy while minimizing API credit usage.
 
 ## Features
 
